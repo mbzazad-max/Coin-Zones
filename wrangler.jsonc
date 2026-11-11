@@ -1,0 +1,10 @@
+{
+  // Coin Zones board on Cloudflare Workers. Static files come from public/ (built on GitHub).
+  "name": "coin-zones",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "vars": { "GITHUB_REPO": "mbzazad-max/coin-zones" },
+  "workers_dev": true,
+  "preview_urls": false
+}
