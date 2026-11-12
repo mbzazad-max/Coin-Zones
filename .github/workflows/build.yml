@@ -14,7 +14,7 @@ on:
     - cron: '5 1 * * *'   # once a day as a safety net, after the daily TradingView load (12:05 Sydney summer time); data commits trigger it too
   push:
     branches: [main]
-    paths: ['public/**', 'worker/**', 'build/**', 'config/**', 'wrangler.jsonc', 'reference/**']
+    paths: ['public/**', 'worker/**', 'build/**', 'config/**', 'wrangler.jsonc', 'wrangler.public.jsonc', 'reference/**']
 permissions:
   contents: write
 concurrency:
@@ -63,3 +63,5 @@ jobs:
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::warning::Cloudflare secrets not set; built but not deployed."; exit 0; fi
           npx -y wrangler@4 deploy   # workers_dev is off: only the home site (dashboards) can reach this Worker
           printf '%s' "$REFRESH_TOKEN" | npx -y wrangler@4 secret put GITHUB_TOKEN
+          # Separate unauthenticated, read-only Worker; no secrets are bound to it.
+          npx -y wrangler@4 deploy --config wrangler.public.jsonc
