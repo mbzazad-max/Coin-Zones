@@ -11,7 +11,7 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '17 23 * * *'   # once a day as a safety net (10:17 Sydney summer time); data commits trigger it too
+    - cron: '5 1 * * *'   # once a day as a safety net, after the daily TradingView load (12:05 Sydney summer time); data commits trigger it too
   push:
     branches: [main]
     paths: ['public/**', 'worker/**', 'build/**', 'config/**', 'wrangler.jsonc', 'reference/**']
