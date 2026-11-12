@@ -4,6 +4,7 @@ The Coin Zones board, rebuilt on GitHub and shown on Cloudflare. Claude only loa
 
 - **Data**: read from the shared repo `mbzazad-max/market-data` (closed candles only).
 - **Logic**: `build/build.js` runs the original engine files in `public/` (`engine.js`, `series.js`, `holdodds.js`, `pnl.js`), byte-identical to the Claude artifact. The workflow checks this on every run against `reference/ENGINE_SHA256SUMS`.
+- **Address**: none of its own. It opens at `/coin-zones/` on the home site (repo `dashboards`), which holds the one login lock.
 - **Display**: `public/index.html` is the original page plus two script tags: `shim.js` (read-only data) and `cloud.js` (Refresh button and freshness strip). The original is kept in `reference/index.original.html`.
 - **Runs**: when market-data gets new candles, once a day as a safety net, or when Refresh is pressed. If no new candles arrived, nothing is rebuilt.
 - **Safety**: a coin or gauge that cannot be built keeps its last good version and is listed in `public/freshness.json` and on the page. If validation fails, nothing is written.

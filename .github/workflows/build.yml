@@ -14,7 +14,7 @@ on:
     - cron: '17 23 * * *'   # once a day as a safety net (10:17 Sydney summer time); data commits trigger it too
   push:
     branches: [main]
-    paths: ['public/**', 'worker/**', 'build/**', 'config/**', 'placeholder/**', 'wrangler.jsonc', 'reference/**']
+    paths: ['public/**', 'worker/**', 'build/**', 'config/**', 'wrangler.jsonc', 'reference/**']
 permissions:
   contents: write
 concurrency:
@@ -61,10 +61,5 @@ jobs:
           REFRESH_TOKEN: ${{ secrets.MARKET_DATA_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then echo "::warning::Cloudflare secrets not set; built but not deployed."; exit 0; fi
-          if [ "$(node -p "require('./config/deploy.json').access_confirmed")" = "true" ]; then
-            npx -y wrangler@4 deploy
-          else
-            echo "Access lock not confirmed yet: deploying the placeholder page only."
-            npx -y wrangler@4 deploy --assets ./placeholder
-          fi
+          npx -y wrangler@4 deploy   # workers_dev is off: only the home site (dashboards) can reach this Worker
           printf '%s' "$REFRESH_TOKEN" | npx -y wrangler@4 secret put GITHUB_TOKEN

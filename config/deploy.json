@@ -1,4 +1,0 @@
-{
- "_about": "Set access_confirmed to true only after Cloudflare Access is on for this Worker and an incognito window was asked to log in. Until then only the placeholder page is deployed.",
- "access_confirmed": false
-}
