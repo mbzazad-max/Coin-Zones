@@ -14,6 +14,7 @@ export default {
     const response = await env.ASSETS.fetch(request);
     if (!response.ok) return response;
     const headers = new Headers(response.headers);
+    headers.delete('content-length');
     headers.set('x-content-type-options', 'nosniff');
     headers.set('referrer-policy', 'no-referrer');
     headers.set('cache-control', url.pathname.endsWith('.json') ? 'public, max-age=60' : 'public, max-age=300');
