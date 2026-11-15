@@ -201,13 +201,6 @@
    "fut_symbol": null,
    "series_4h": "binance/GRAMUSDT/4H",
    "series_1d": "binance/GRAMUSDT/1D"
-  },
-  {
-   "sym": "MNT",
-   "spot_symbol": "BYBIT:MNTUSDT",
-   "fut_symbol": null,
-   "series_4h": "tv/BYBIT_MNTUSDT/4H",
-   "series_1d": "tv/BYBIT_MNTUSDT/1D"
   }
  ],
  "gauges": {
