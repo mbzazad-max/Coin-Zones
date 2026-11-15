@@ -62,7 +62,7 @@ function main() {
   // Gauges have no buy zone, so there is no buy / wait verdict: only which way 4H structure last shifted and what that
   // means for crypto. Series and scaling match series.js buildGauges (GDEF there is not exported, so it is mirrored here).
   let gauges = null;
-  try { gauges = gaugeStructure(cfg, load, cut); } catch (e) { console.log('::warning::Gauge structure skipped: ' + (e && e.message || e)); }
+  try { gauges = gaugeStructure(cfg, load, cut, MD); } catch (e) { console.log('::warning::Gauge structure skipped: ' + (e && e.message || e)); }
 
   // ---- 2. the running paper test, with the MSS entry ----
   let live = null;
@@ -149,7 +149,7 @@ function main() {
   if (live) round(live.mss);
 
   wr(path.join(PUB, 'structure.json'), { generated: board.meta.generated, coins, gauges, live, history });
-  console.log(JSON.stringify({ coins: Object.keys(coins).length, gauges: gauges && gauges.market, days_worked_out: made, live: live && { zone: live.zone, mss: live.mss }, history: { zone: history.zone, mss: history.mss } }, null, 1));
+  console.log(JSON.stringify({ coins: Object.keys(coins).length, gauges: gauges && Object.fromEntries(Object.entries(gauges.market).map(([k, v]) => [k, v.read])), days_worked_out: made, live: live && { zone: live.zone, mss: live.mss }, history: { zone: history.zone, mss: history.mss } }, null, 1));
 }
 
 // Monitor only: gauges cannot be bought or sold, so there is no entry, stop, target or P&L test for them.
@@ -164,28 +164,55 @@ const GAUGE_DEF = [
   ['GOLD', ['GOLD'], (R) => R.GOLD, 0, 'Gold turning up (safe-haven demand)', 'Gold turning down'],
   ['SILVER', ['SILV'], (R) => R.SILV, 0, 'Silver turning up', 'Silver turning down']];
 function scaleB(B, f) { const o = {}; for (const k of 'tohlcv') o[k] = 'ohlc'.includes(k) ? B[k].map((x) => x * f) : B[k].slice(); return o; }
-function gaugeStructure(cfg, load, cut) {
+// Timeframes (owner's request, 15 Nov 2026): 4H as loaded and 1D made from the 4H candles (complete days only). Same MSS
+// rules on each; a shift stands 30 candles of its own timeframe (5 days, 30 days) unless price closes back through the
+// sweep or an opposite shift comes.
+const GTF = [['4H', H4], ['1D', DAY]];
+function gaugeBars(cfg, load, cut, map, n) {
   const SR = require(path.join(PUB, 'series.js')), R = {};
-  for (const [k, id] of Object.entries(cfg.gauges.series)) { const B = load(id); if (B) R[k] = cut(B, -cfg.bars.gauge_4h); }
-  const S = SR.compose(R), out = {}, votes = [];
-  const pack = (B, e) => e && { dir: e.dir, level: sig(e.level), sweep: sig(e.sweep), fvg: e.fvg ? [sig(e.fvg.lo), sig(e.fvg.hi)] : null, at: B.t[e.conf_i] + H4, age: e.age, atr: sig(e.atr) };
+  for (const [k, id] of Object.entries(map || {})) { const B = load(id); if (B) R[k] = cut(B, -n); }
+  return { R, S: SR.compose(R) };
+}
+function toDays(B4, fetched) {
+  const D = ZE.resample(B4, ZE.day); if (!D.t.length) return D;
+  const lastClose = B4.t[B4.t.length - 1] + H4, lastDay = D.t[D.t.length - 1];
+  // a day counts once its last 4H candle has closed, or once the data was fetched after the day ended
+  // (gold and silver stop trading before midnight UTC, so their last candle closes early)
+  if (lastClose < lastDay + DAY && !(fetched >= lastDay + DAY)) for (const k of 'tohlcv') D[k] = D[k].slice(0, -1);
+  return D;
+}
+function gaugeStructure(cfg, load, cut, MD) {
+  let man = {}; try { man = rd(path.join(MD, 'manifest.json')).series || {}; } catch (e) { /* no fetch times: open days are dropped */ }
+  const src = gaugeBars(cfg, load, cut, cfg.gauges.series, cfg.bars.gauge_4h);
+  const pack = (B, e, P) => e && { dir: e.dir, level: sig(e.level), sweep: sig(e.sweep), fvg: e.fvg ? [sig(e.fvg.lo), sig(e.fvg.hi)] : null, at: B.t[e.conf_i] + P, age: e.age, atr: sig(e.atr) };
+  const list = {}, market = {};
   for (const [sym, keys, make, vote, upTxt, dnTxt] of GAUGE_DEF) {
-    if (!keys.every((k) => R[k])) continue;
-    const full = make(R, S); if (!full || full.c.length < 60) continue;
-    const B = cut(full, -1000), ev = STRUCT.detect(B), n = B.c.length;
-    const bull = STRUCT.activeAt(B, ev, 1), bear = STRUCT.activeAt(B, ev, -1);
-    const now = bull && bear ? (bull.conf_i >= bear.conf_i ? bull : bear) : bull || bear;     // the newer one if both stand
-    const lastE = ev.length ? ev[ev.length - 1] : null, last = lastE && Object.assign({}, lastE, { age: n - 1 - lastE.conf_i });
-    let state = 'NONE', read = 'No 4H structure shift standing (last 5 days).';
-    if (now) { state = now.dir > 0 ? 'UP' : 'DOWN'; read = now.dir > 0 ? upTxt : dnTxt; }
-    const crypto = now && vote ? now.dir * vote : 0;                                              // +1 risk-on, -1 risk-off
-    if (vote) votes.push({ sym, v: crypto });
-    out[sym] = { price: sig(B.c[n - 1]), state, read, crypto: vote ? crypto : null, context: !vote,
-      bull: pack(B, bull), bear: pack(B, bear), last: last && !now ? pack(B, last) : null };
+    const row = { price: null, context: !vote, tf: {} };
+    for (const [tf, P] of GTF) {
+      const S = src;
+      if (!keys.every((k) => S.R[k])) continue;
+      let full = make(S.R, S.S); if (!full) continue;
+      if (tf === '1D') full = toDays(full, Math.min(...keys.map((k) => (man[cfg.gauges.series[k]] || {}).fetched_at || 0)));
+      if (full.c.length < 60) continue;
+      const B = cut(full, -1000), ev = STRUCT.detect(B), n = B.c.length;
+      const bull = STRUCT.activeAt(B, ev, 1), bear = STRUCT.activeAt(B, ev, -1);
+      const now = bull && bear ? (bull.conf_i >= bear.conf_i ? bull : bear) : bull || bear;
+      const lastE = ev.length ? ev[ev.length - 1] : null, last = lastE && Object.assign({}, lastE, { age: n - 1 - lastE.conf_i });
+      const crypto = now && vote ? now.dir * vote : 0;
+      row.tf[tf] = { state: now ? (now.dir > 0 ? 'BULLISH' : 'BEARISH') : 'NONE', read: now ? (now.dir > 0 ? upTxt : dnTxt) : 'No ' + tf + ' structure shift standing.',
+        crypto: vote ? crypto : null, price: sig(B.c[n - 1]), asof: B.t[n - 1] + P,
+        bull: pack(B, bull, P), bear: pack(B, bear, P), last: last && !now ? pack(B, last, P) : null };
+      if (tf === '4H') row.price = row.tf[tf].price;
+    }
+    if (Object.keys(row.tf).length) list[sym] = row;
   }
-  const on = votes.filter((x) => x.v > 0).map((x) => x.sym), off = votes.filter((x) => x.v < 0).map((x) => x.sym);
-  const market = !votes.length ? null : on.length && !off.length ? 'RISK-ON' : off.length && !on.length ? 'RISK-OFF' : on.length && off.length ? 'MIXED' : 'NO SHIFT';
-  return { market, on, off, counted: votes.map((x) => x.sym), list: out };
+  for (const [tf] of GTF) {
+    const votes = GAUGE_DEF.filter((g) => g[3] && list[g[0]] && list[g[0]].tf[tf]).map((g) => ({ sym: g[0], v: list[g[0]].tf[tf].crypto }));
+    if (!votes.length) continue;
+    const on = votes.filter((x) => x.v > 0).map((x) => x.sym), off = votes.filter((x) => x.v < 0).map((x) => x.sym);
+    market[tf] = { read: on.length && !off.length ? 'RISK-ON' : off.length && !on.length ? 'RISK-OFF' : on.length && off.length ? 'MIXED' : 'NO SHIFT', on, off, counted: votes.map((x) => x.sym) };
+  }
+  return { tfs: GTF.map((x) => x[0]).filter((tf) => market[tf]), market, list };
 }
 
 try { main(); } catch (e) { console.log('::warning::Structure layer skipped: ' + (e && e.stack || e)); process.exit(0); }
