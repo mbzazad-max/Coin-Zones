@@ -38,6 +38,44 @@
     if (p && (p.zone.closed || p.mss.closed)) h += '<p class="note" style="margin:6px 0">' + esc(sym) + ' since ' + esc(D.history.from) + ': zone only ' + p.zone.closed + ' trades, ' + pc(p.zone.avg_ret, 2) + ' each on average &middot; with a structure shift ' + p.mss.closed + ' trades, ' + pc(p.mss.avg_ret, 2) + ' each.</p>';
     return h + '<p class="note" style="margin:6px 0 0">' + RULE + '</p></div>';
   }
+  /* Market gauges: monitor only (they cannot be bought or sold), same 4H MSS rules as the coins. */
+  var GRULE = 'Same 4H structure-shift rules as the coins. Monitor only: a gauge cannot be bought or sold, so there is no entry, stop or P&amp;L test. Market read counts TOTAL, TOTAL2ES, TOTAL3ES and stablecoin dominance (a shift up in stablecoin dominance is risk-off); ETHBTC, Gold and Silver are context.';
+  function gPill(g) {
+    if (g.state === 'NONE') return '<span class="pill warn">No shift</span>';
+    var good = g.crypto > 0, bad = g.crypto < 0, cls = good ? 'sup' : bad ? 'res' : 'acc';
+    return '<span class="pill ' + cls + '">Shifted ' + (g.state === 'UP' ? 'up' : 'down') + (good ? ': risk-on' : bad ? ': risk-off' : '') + '</span>';
+  }
+  function gLast(g) {
+    var e = g.state === 'UP' ? g.bull : g.state === 'DOWN' ? g.bear : g.last;
+    if (!e) return '<span class="note">none in the last 1000 candles</span>';
+    return (g.state === 'NONE' ? '<span class="note">last: ' + (e.dir > 0 ? 'up' : 'down') + ', expired &middot; </span>' : '') + shiftLine(e, e.dir > 0);
+  }
+  function marketLine() {
+    var G = D.gauges; if (!G || !G.market) return '';
+    var m = G.market, cls = m === 'RISK-ON' ? 'sup' : m === 'RISK-OFF' ? 'res' : 'warn';
+    var txt = m === 'RISK-ON' ? 'Gauges shifted risk-on: ' + G.on.join(', ') + '.' : m === 'RISK-OFF' ? 'Gauges shifted risk-off: ' + G.off.join(', ') + '.' : m === 'MIXED' ? 'Gauges disagree. Risk-on: ' + G.on.join(', ') + '; risk-off: ' + G.off.join(', ') + '.' : 'No market gauge has a standing 4H structure shift.';
+    return '<span class="pill ' + cls + '">Market: ' + esc(m.toLowerCase()) + '</span> ' + esc(txt);
+  }
+  function gaugeTable() {
+    var G = D.gauges; if (!G || !G.list) return '';
+    var day = function (t) { return new Date(t * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' }); };
+    var h = '<h3 style="margin-top:14px">Market gauges: 4H structure (monitor only)</h3><p style="margin:6px 0">' + marketLine() + '</p><div class="scroll"><table><thead><tr><th>Gauge</th><th>4H structure</th><th>Last shift</th></tr></thead><tbody>';
+    Object.keys(G.list).forEach(function (s) { var g = G.list[s], e = g.state === 'UP' ? g.bull : g.state === 'DOWN' ? g.bear : g.last;
+      h += '<tr><td><a href="#' + encodeURIComponent(s) + '"><b>' + esc(s) + '</b></a>' + (g.context ? '<div class="note">context</div>' : '') + '</td><td>' + gPill(g) + (g.state !== 'NONE' ? '<div class="note">' + esc(g.read) + '</div>' : '') + '</td><td class="note">' + (e ? (e.dir > 0 ? 'up' : 'down') + ', ' + esc(day(e.at)) + (g.state === 'NONE' ? ' (expired)' : '') : '-') + '</td></tr>'; });
+    return h + '</tbody></table></div>';
+  }
+  function gaugeCard(sym) {
+    var g = D.gauges.list[sym];
+    var h = '<div class="card" id="structCard"><div class="row" style="margin-bottom:6px"><div class="grow"><h2 style="margin:0">4H structure shift (monitor only)</h2></div>' + gPill(g) + '</div>';
+    h += '<p style="margin:6px 0"><b>' + esc(g.read) + '</b>' + (g.context ? ' <span class="note">Context gauge: not counted in the market read.</span>' : '') + '</p>';
+    h += '<div class="scroll"><table><tbody>';
+    if (g.bull) h += '<tr><td>Shift up</td><td>' + shiftLine(g.bull, true) + (g.bull.fvg ? ' <span class="note">(gap ' + px(g.bull.fvg[0]) + ' - ' + px(g.bull.fvg[1]) + ')</span>' : '') + '</td></tr><tr><td>Fails if</td><td>a 4H close below <span class="num">' + px(g.bull.sweep) + '</span></td></tr>';
+    if (g.bear) h += '<tr><td>Shift down</td><td>' + shiftLine(g.bear, false) + (g.bear.fvg ? ' <span class="note">(gap ' + px(g.bear.fvg[0]) + ' - ' + px(g.bear.fvg[1]) + ')</span>' : '') + '</td></tr><tr><td>Fails if</td><td>a 4H close above <span class="num">' + px(g.bear.sweep) + '</span></td></tr>';
+    if (!g.bull && !g.bear) h += '<tr><td>Last shift</td><td>' + gLast(g) + '</td></tr>';
+    h += '<tr><td>Now</td><td><span class="num">' + px(g.price) + '</span> <span class="note">(last closed 4H candle)</span></td></tr></tbody></table></div>';
+    h += '<p style="margin:6px 0">' + marketLine() + '</p>';
+    return h + '<p class="note" style="margin:6px 0 0">' + GRULE + ' ' + RULE.replace(/ Entry is[^.]*\./, '').replace(/ Rules of thumb.*$/, '') + '</p></div>';
+  }
   function overviewCard() {
     var buy = [], trim = [], n = 0;
     Object.keys(D.coins).forEach(function (s) { n++; var c = D.coins[s]; if (c.buy === 'BUY') buy.push(s); if (c.trim) trim.push(s); });
@@ -45,7 +83,7 @@
     return '<div class="card" id="structCard"><h2>4H structure shift</h2><p style="margin:6px 0">'
       + (buy.length ? 'Shifted up from the buy zone: ' + buy.map(link).join(', ') + '. ' : '<b>No coin has a structure shift up from its buy zone right now.</b> ')
       + (n - buy.length) + ' of ' + n + ' coins: wait.' + (trim.length ? ' Trim signal (shift down from the sell zone): ' + trim.map(link).join(', ') + '.' : '') + '</p>'
-      + '<p class="note" style="margin:6px 0 0">A buy zone alone is not an entry: wait for 4H structure to turn up inside it. Details on each coin\'s Spot setup tab; the test of this rule is on Top 20 P&amp;L.</p></div>';
+      + '<p class="note" style="margin:6px 0 0">A buy zone alone is not an entry: wait for 4H structure to turn up inside it. Details on each coin\'s Spot setup tab; the test of this rule is on Top 20 P&amp;L.</p>' + gaugeTable() + (D.gauges ? '<p class="note" style="margin:6px 0 0">' + GRULE + '</p>' : '') + '</div>';
   }
   function row(lab, s) {
     return '<tr><td>' + lab + '</td><td class="num r">' + s.closed + '</td><td class="num r">' + (s.win_rate == null ? '-' : s.win_rate.toFixed(0) + '%') + '</td><td class="num r">' + pc(s.avg_ret, 2) + '</td><td class="num r">' + (s.pf == null ? '-' : s.pf.toFixed(2)) + '</td><td class="num r">' + usd(s.net) + '</td></tr>';
@@ -74,6 +112,9 @@
     else if (D.coins[sym]) {
       var spot = [].filter.call(main.querySelectorAll('.card h2'), function (x) { return /Buy and sell zones by timeframe/.test(x.textContent); })[0];
       if (!spot) return; html = coinCard(sym); before = spot.closest('.card');
+    } else if (D.gauges && D.gauges.list && D.gauges.list[sym]) {
+      var zt = [].filter.call(main.querySelectorAll('.card h2'), function (x) { return /Resistance \(nearest first\)/.test(x.textContent); })[0];
+      if (!zt) return; html = gaugeCard(sym); before = zt.closest('.card');
     } else if (!sym || sym === 'overview') { html = overviewCard(); before = cards[0]; }
     if (!html) return;
     busy = true;

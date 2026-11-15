@@ -58,6 +58,12 @@ function main() {
     coins[row.sym] = { price: sig(px), buy, why, bull: pack(bull), bear: pack(bear), trim, zone: zone ? [sig(zone.lo), sig(zone.hi)] : null, sell: sell ? [sig(sell.lo), sig(sell.hi)] : null, t1: sig(ss.t1), t2: sig(ss.t2) };
   }
 
+  // ---- 1b. the same 4H structure shift on the market gauges (added 15 Nov 2026 at the owner's request) ----
+  // Gauges have no buy zone, so there is no buy / wait verdict: only which way 4H structure last shifted and what that
+  // means for crypto. Series and scaling match series.js buildGauges (GDEF there is not exported, so it is mirrored here).
+  let gauges = null;
+  try { gauges = gaugeStructure(cfg, load, cut); } catch (e) { console.log('::warning::Gauge structure skipped: ' + (e && e.message || e)); }
+
   // ---- 2. the running paper test, with the MSS entry ----
   let live = null;
   if (fs.existsSync(path.join(ST, 'cfg.json'))) {
@@ -142,8 +148,44 @@ function main() {
   const history = { from: FROM, to: lastDay, size: R.size, fee: R.fee, coins_n: zs.length, zone: round(STRUCT.summary(zs, R.size)), mss: round(STRUCT.summary(ms, R.size)), per };
   if (live) round(live.mss);
 
-  wr(path.join(PUB, 'structure.json'), { generated: board.meta.generated, coins, live, history });
-  console.log(JSON.stringify({ coins: Object.keys(coins).length, days_worked_out: made, live: live && { zone: live.zone, mss: live.mss }, history: { zone: history.zone, mss: history.mss } }, null, 1));
+  wr(path.join(PUB, 'structure.json'), { generated: board.meta.generated, coins, gauges, live, history });
+  console.log(JSON.stringify({ coins: Object.keys(coins).length, gauges: gauges && gauges.market, days_worked_out: made, live: live && { zone: live.zone, mss: live.mss }, history: { zone: history.zone, mss: history.mss } }, null, 1));
+}
+
+// Monitor only: gauges cannot be bought or sold, so there is no entry, stop, target or P&L test for them.
+// up/down: what a shift that way means for crypto. vote: +1 when an up shift is risk-on for crypto, -1 when it is
+// risk-off (stablecoin dominance), 0 when the gauge is context only and does not count in the market read.
+const GAUGE_DEF = [
+  ['TOTAL2ES', ['T2'], (R) => R.T2 && scaleB(R.T2, 1e-9), 1, 'Money flowing into altcoins (ex ETH)', 'Money leaving altcoins (ex ETH)'],
+  ['TOTAL3ES', ['T3'], (R) => R.T3 && scaleB(R.T3, 1e-9), 1, 'Money flowing into small altcoins', 'Money leaving small altcoins'],
+  ['TOTAL', ['TOT'], (R) => R.TOT && scaleB(R.TOT, 1e-9), 1, 'Whole crypto market turning up', 'Whole crypto market turning down'],
+  ['USDT.D+USDC.D', ['USDT', 'USDC'], (R, S) => S.S_dom, -1, 'Money moving into stablecoins: risk-off for crypto', 'Money leaving stablecoins for coins: risk-on for crypto'],
+  ['ETHBTC', ['ETHBTC'], (R) => R.ETHBTC, 0, 'ETH gaining on BTC (alt rotation)', 'BTC leading ETH'],
+  ['GOLD', ['GOLD'], (R) => R.GOLD, 0, 'Gold turning up (safe-haven demand)', 'Gold turning down'],
+  ['SILVER', ['SILV'], (R) => R.SILV, 0, 'Silver turning up', 'Silver turning down']];
+function scaleB(B, f) { const o = {}; for (const k of 'tohlcv') o[k] = 'ohlc'.includes(k) ? B[k].map((x) => x * f) : B[k].slice(); return o; }
+function gaugeStructure(cfg, load, cut) {
+  const SR = require(path.join(PUB, 'series.js')), R = {};
+  for (const [k, id] of Object.entries(cfg.gauges.series)) { const B = load(id); if (B) R[k] = cut(B, -cfg.bars.gauge_4h); }
+  const S = SR.compose(R), out = {}, votes = [];
+  const pack = (B, e) => e && { dir: e.dir, level: sig(e.level), sweep: sig(e.sweep), fvg: e.fvg ? [sig(e.fvg.lo), sig(e.fvg.hi)] : null, at: B.t[e.conf_i] + H4, age: e.age, atr: sig(e.atr) };
+  for (const [sym, keys, make, vote, upTxt, dnTxt] of GAUGE_DEF) {
+    if (!keys.every((k) => R[k])) continue;
+    const full = make(R, S); if (!full || full.c.length < 60) continue;
+    const B = cut(full, -1000), ev = STRUCT.detect(B), n = B.c.length;
+    const bull = STRUCT.activeAt(B, ev, 1), bear = STRUCT.activeAt(B, ev, -1);
+    const now = bull && bear ? (bull.conf_i >= bear.conf_i ? bull : bear) : bull || bear;     // the newer one if both stand
+    const lastE = ev.length ? ev[ev.length - 1] : null, last = lastE && Object.assign({}, lastE, { age: n - 1 - lastE.conf_i });
+    let state = 'NONE', read = 'No 4H structure shift standing (last 5 days).';
+    if (now) { state = now.dir > 0 ? 'UP' : 'DOWN'; read = now.dir > 0 ? upTxt : dnTxt; }
+    const crypto = now && vote ? now.dir * vote : 0;                                              // +1 risk-on, -1 risk-off
+    if (vote) votes.push({ sym, v: crypto });
+    out[sym] = { price: sig(B.c[n - 1]), state, read, crypto: vote ? crypto : null, context: !vote,
+      bull: pack(B, bull), bear: pack(B, bear), last: last && !now ? pack(B, last) : null };
+  }
+  const on = votes.filter((x) => x.v > 0).map((x) => x.sym), off = votes.filter((x) => x.v < 0).map((x) => x.sym);
+  const market = !votes.length ? null : on.length && !off.length ? 'RISK-ON' : off.length && !on.length ? 'RISK-OFF' : on.length && off.length ? 'MIXED' : 'NO SHIFT';
+  return { market, on, off, counted: votes.map((x) => x.sym), list: out };
 }
 
 try { main(); } catch (e) { console.log('::warning::Structure layer skipped: ' + (e && e.stack || e)); process.exit(0); }
