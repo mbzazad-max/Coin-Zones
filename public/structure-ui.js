@@ -51,18 +51,12 @@
     return '<tr><td>' + lab + '</td><td class="num r">' + s.closed + '</td><td class="num r">' + (s.win_rate == null ? '-' : s.win_rate.toFixed(0) + '%') + '</td><td class="num r">' + pc(s.avg_ret, 2) + '</td><td class="num r">' + (s.pf == null ? '-' : s.pf.toFixed(2)) + '</td><td class="num r">' + usd(s.net) + '</td></tr>';
   }
   function pnlCard() {
-    var L = D.live, H = D.history, h = '<div class="card" id="structCard"><h2>Same test, buying only after a 4H structure shift</h2>';
+    var L = D.live, H = D.history, h = '<div class="card" id="structCard"><h2>Buy rule: buy zone + 4H structure shift (both must agree)</h2>';
     if (L) {
-      h += '<div class="kv">' + kpi('Original (buy the zone)', usd(L.zone.net), L.zone.wins + ' W &middot; ' + L.zone.losses + ' L &middot; ' + L.zone.open + ' open', L.zone.net > 0 ? 'good' : L.zone.net < 0 ? 'bad' : '')
-        + kpi('With structure shift', usd(L.mss.net), L.mss.wins + ' W &middot; ' + L.mss.losses + ' L &middot; ' + L.mss.open + ' open &middot; ' + L.mss.pending + ' pending', L.mss.net > 0 ? 'good' : L.mss.net < 0 ? 'bad' : '')
-        + kpi('Losses avoided', usd(L.mss.net - L.zone.net), 'difference so far, same window, size and fee') + '</div>';
-      var T = L.trades.concat(L.open);
-      if (T.length || L.pending.length) {
-        h += '<div class="scroll"><table><thead><tr><th>Coin</th><th>Entered</th><th class="r">Entry</th><th class="r">Stop</th><th class="r">T1</th><th>Result</th><th class="r">P&amp;L</th></tr></thead><tbody>';
-        T.forEach(function (x) { h += '<tr><td><b>' + esc(x.sym) + '</b></td><td class="num">' + esc(when(x.entryT)) + '</td><td class="num r">' + px(x.px) + '</td><td class="num r">' + px(x.stop) + '</td><td class="num r">' + px(x.t1) + '</td><td>' + (x.out ? esc(x.out) : '<span class="pill sup">open' + (x.half ? ', T1 taken' : '') + '</span>') + '</td><td class="num r">' + usd(x.pnl) + '</td></tr>'; });
-        L.pending.forEach(function (x) { h += '<tr><td><b>' + esc(x.sym) + '</b></td><td class="note">waiting for a pullback</td><td class="num r">' + px(x.entry) + '</td><td class="num r">' + px(x.stop) + '</td><td class="num r">' + px(x.t1) + '</td><td><span class="pill warn">pending</span></td><td class="num r">-</td></tr>'; });
-        h += '</tbody></table></div>';
-      } else h += '<p class="note" style="margin:6px 0">No structure-shift entry yet in this test: no coin has shifted up from its buy zone since it started.</p>';
+      h += '<p style="margin:6px 0">The test above now buys only when price is at the board\'s buy zone <b>and</b> a 4H structure shift confirms there. Until then a coin shows no order.</p>'
+        + '<div class="kv">' + kpi('This test (zone + structure shift)', usd(L.mss.net), L.mss.wins + ' W &middot; ' + L.mss.losses + ' L &middot; ' + L.mss.open + ' open &middot; ' + L.mss.pending + ' pending', L.mss.net > 0 ? 'good' : L.mss.net < 0 ? 'bad' : '')
+        + kpi('Old rule (buy the zone alone)', usd(L.zone.net), L.zone.wins + ' W &middot; ' + L.zone.losses + ' L &middot; ' + L.zone.open + ' open', L.zone.net > 0 ? 'good' : L.zone.net < 0 ? 'bad' : '')
+        + kpi('Difference', usd(L.mss.net - L.zone.net), 'same window, size and fee') + '</div>';
     }
     if (H) {
       h += '<h3 style="margin-top:14px">Both ways since ' + esc(H.from) + ' (' + H.coins_n + ' coins, $' + H.size + ' per trade, ' + H.fee + '% fee each side)</h3>'

@@ -67,8 +67,34 @@ function main() {
       if (fs.existsSync(sf)) st.snaps[sym] = rd(sf); if (fs.existsSync(bf)) st.bars[sym] = rd(bf);
       if (bars[sym] && st.snaps[sym]) mss.push(STRUCT.simMss(sym, st.snaps[sym].snaps, cut(bars[sym].B4, -1000), R));
     }
+    // The page's Top 20 P&L now buys only when BOTH agree: the board's buy zone and a 4H structure shift from it
+    // (owner's choice, 15 Nov 2026). The original pnl.js is unchanged: it is handed advice that says "no order" until
+    // a shift from the zone is confirmed, then that shift's entry, stop and the board's targets for 12 candles.
+    // state/pnl keeps the board's own advice untouched; only the public/pnl.json the page reads is rewritten here.
+    const NOW = Math.floor(Date.now() / 1000), pub = rd(path.join(PUB, 'pnl.json'));
+    for (const sym of pc.cohort) {
+      if (!bars[sym] || !st.snaps[sym]) continue;
+      const B = cut(bars[sym].B4, -1000), S = (st.snaps[sym].snaps || []).slice().sort((a, b) => a.t - b.t), orders = [];
+      for (const e of STRUCT.detect(B)) {
+        if (e.dir < 0) continue;
+        const tc = B.t[e.conf_i] + H4; if (tc < pc.start || tc >= pc.end || tc > NOW) continue;
+        let a = null; for (const x of S) { if (x.t > tc) break; a = x; }
+        if (!a || a.none || a.entry == null || a.hi == null) continue;                      // no buy zone on the board then
+        if (e.sweep > a.hi + STRUCT.ZONE_ATR * e.atr) continue;                              // the sweep never reached the zone
+        const risk = e.entry - e.stop, tg = [a.t1, a.t2].filter((x) => x != null && x - e.entry >= risk).sort((x, y) => x - y);
+        if (!(risk > 0) || !tg.length) continue;                                             // no board target at least 1R away
+        const t1 = tg[0], t2 = tg[1] == null ? tg[0] : tg[1];                                // one target only: all out there
+        orders.push({ t: tc, entry: e.entry, stop: e.stop, t1, t2, rr1: (t1 - e.entry) / risk, rr2: (t2 - e.entry) / risk, lo: a.lo, hi: a.hi, state: 'MSS BUY' });
+      }
+      const out = [{ t: pc.start, none: true, state: 'WAIT: NO STRUCTURE SHIFT' }];
+      orders.forEach((o, k) => { out.push(o); const exp = o.t + STRUCT.FILL_WAIT * H4, nx = orders[k + 1]; if (!nx || nx.t > exp) out.push({ t: exp, none: true, state: 'WAIT: NO STRUCTURE SHIFT' }); });
+      pub['s_' + sym] = { sym, snaps: out.filter((x) => x.t <= NOW) };
+    }
+    pub.cfg = Object.assign({}, pc, { entry_rule: 'buy zone + 4H structure shift (both must agree)' });
+    wr(path.join(PUB, 'pnl.json'), pub);
+    const chk = PNL.run({ cfg: pc, snaps: Object.fromEntries(pc.cohort.map((s) => [s, pub['s_' + s]])), bars: st.bars }, {}).sum;
     const o = PNL.run(st, {}).sum, tr = (x) => ({ sym: x.sym, entryT: x.entryT, px: sig(x.px), stop: sig(x.stop), t1: sig(x.t1), t2: sig(x.t2), exitT: x.exitT || null, exitPx: sig(x.exitPx), out: x.out || null, pnl: sig(x.pnl), ret: sig(x.ret), half: !!x.half });
-    live = { start: pc.start, end: pc.end, size: pc.size, fee: pc.fee,
+    live = { rule: 'both', page: { closed: chk.closed, wins: chk.wins, losses: chk.losses, net: sig(chk.net), open: chk.open, pending: chk.pending }, start: pc.start, end: pc.end, size: pc.size, fee: pc.fee,
       zone: { closed: o.closed, wins: o.wins, losses: o.losses, win_rate: o.winRate, realized: sig(o.realized), open: o.open, open_pnl: sig(o.openPnl), net: sig(o.net), pending: o.pending },
       mss: STRUCT.summary(mss, pc.size), trades: [].concat(...mss.map((c) => c.trades.map(tr))).sort((a, b) => a.entryT - b.entryT),
       open: mss.filter((c) => c.open).map((c) => tr(c.open)),
