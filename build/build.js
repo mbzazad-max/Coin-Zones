@@ -26,6 +26,8 @@ const wr = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.wr
 const cfg = rd(path.join(ROOT, 'config', 'board.json'));
 const manifest = rd(path.join(MD, 'manifest.json')).series;
 const prev = rd(path.join(PUB, 'data.json'));               // last good board
+const removed = new Set(cfg.removed || []);                 // rows taken off the board for good: never kept as 'last good'
+prev.coins = prev.coins.filter(c => !removed.has(c.sym));
 const prevFresh = fs.existsSync(path.join(PUB, 'freshness.json')) ? rd(path.join(PUB, 'freshness.json')) : null;
 
 function csvFile(id) { const [src, sym, tf] = id.split('/'); return path.join(MD, 'data', src, `${sym}_${tf}.csv`); }
@@ -81,6 +83,7 @@ for (const [k, id] of Object.entries(cfg.gauges.series)) { const B = load(id); i
 globalThis.HO = HO; globalThis.ZE = ZE; globalThis.HOLD_POOL_G = prev.hold && prev.hold.poolG;
 let G = [];
 try { G = SR.buildGauges(R); } catch (e) { kept.push({ sym: 'gauges', why: 'engine error: ' + (e && e.message || e) }); }
+G = G.filter(g => !removed.has(g.sym));
 G.forEach(g => { built[g.sym] = g; });
 
 // ---- assemble the board: same order as the last good board; unbuilt rows keep their last good version ----
@@ -96,6 +99,8 @@ for (const c of cfg.coins) {
   if (built[c.sym]) out.coins.push(built[c.sym]); else waiting.add(c.sym);   // no data yet: not on the board until it arrives
 }
 out.meta.generated = stampOf(NOW);
+out.meta.gauges = out.coins.filter(c => c.kind === 'gauge').length;   // the page header shows these counts
+out.meta.n = out.coins.length - out.meta.gauges;
 
 // ---- validate before writing anything ----
 const problems = [];

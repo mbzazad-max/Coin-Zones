@@ -39,7 +39,7 @@
     return h + '<p class="note" style="margin:6px 0 0">' + RULE + '</p></div>';
   }
   /* Market gauges: monitor only (they cannot be bought or sold), same MSS rules as the coins on 4H and 1D. */
-  var GRULE = 'Same market structure shift (MSS) rules as the coins, on 4H and 1D (1D is built from the 4H candles). Bullish MSS: a candle closes above the last lower high after sweeping a swing low, with a strong move. Bearish MSS is the mirror. A shift stands for 30 candles of its timeframe (5 days on 4H, 30 days on 1D) unless price closes back through the sweep. Monitor only: a gauge cannot be bought or sold, so there is no entry, stop or P&amp;L. Market read counts TOTAL, TOTAL2ES, TOTAL3ES and stablecoin dominance (a bullish MSS in stablecoin dominance is risk-off); ETHBTC, Gold and Silver are context. Closed candles only.';
+  var GRULE = 'Same market structure shift (MSS) rules as the coins, on 4H and 1D (1D is built from the 4H candles). Bullish MSS: a candle closes above the last lower high after sweeping a swing low, with a strong move. Bearish MSS is the mirror. A shift stands for 30 candles of its timeframe (5 days on 4H, 30 days on 1D) unless price closes back through the sweep. Monitor only: a gauge cannot be bought or sold, so there is no entry, stop or P&amp;L. Market read counts TOTAL, TOTAL2ES, TOTAL3ES and stablecoin dominance (a bullish MSS in stablecoin dominance is risk-off); ETHBTC is context. Closed candles only.';
   var day = function (t) { return new Date(t * 1000).toLocaleDateString([], { day: 'numeric', month: 'short' }); };
   function gPill(x, short) {
     if (!x) return '<span class="note">-</span>';

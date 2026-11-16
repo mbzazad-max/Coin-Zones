@@ -17,7 +17,7 @@ const tail = (B, n) => { const o = {}; for (const k in B) o[k] = B[k].slice(-n);
 // page symbol -> series
 const SYM = {};
 cfg.coins.forEach(c => { SYM[c.spot_symbol + '|4h'] = c.series_4h; SYM[c.spot_symbol + '|1D'] = c.series_1d; });
-const GS = { T2: 'CRYPTOCAP:TOTAL2ES', TOT: 'CRYPTOCAP:TOTAL', T3: 'CRYPTOCAP:TOTAL3ES', USDT: 'CRYPTOCAP:USDT.D', USDC: 'CRYPTOCAP:USDC.D', ETHBTC: 'BINANCE:ETHBTC', GOLD: 'TVC:GOLD', SILV: 'TVC:SILVER' };
+const GS = { T2: 'CRYPTOCAP:TOTAL2ES', TOT: 'CRYPTOCAP:TOTAL', T3: 'CRYPTOCAP:TOTAL3ES', USDT: 'CRYPTOCAP:USDT.D', USDC: 'CRYPTOCAP:USDC.D', ETHBTC: 'BINANCE:ETHBTC' };
 for (const [k, s] of Object.entries(GS)) SYM[s + '|4h'] = cfg.gauges.series[k];
 
 const store = { 'pnl/cfg': JSON.parse(fs.readFileSync(path.join(ROOT, 'state/pnl/cfg.json'), 'utf8')) };

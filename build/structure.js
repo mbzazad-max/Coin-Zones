@@ -160,9 +160,7 @@ const GAUGE_DEF = [
   ['TOTAL3ES', ['T3'], (R) => R.T3 && scaleB(R.T3, 1e-9), 1, 'Money flowing into small altcoins', 'Money leaving small altcoins'],
   ['TOTAL', ['TOT'], (R) => R.TOT && scaleB(R.TOT, 1e-9), 1, 'Whole crypto market turning up', 'Whole crypto market turning down'],
   ['USDT.D+USDC.D', ['USDT', 'USDC'], (R, S) => S.S_dom, -1, 'Money moving into stablecoins: risk-off for crypto', 'Money leaving stablecoins for coins: risk-on for crypto'],
-  ['ETHBTC', ['ETHBTC'], (R) => R.ETHBTC, 0, 'ETH gaining on BTC (alt rotation)', 'BTC leading ETH'],
-  ['GOLD', ['GOLD'], (R) => R.GOLD, 0, 'Gold turning up (safe-haven demand)', 'Gold turning down'],
-  ['SILVER', ['SILV'], (R) => R.SILV, 0, 'Silver turning up', 'Silver turning down']];
+  ['ETHBTC', ['ETHBTC'], (R) => R.ETHBTC, 0, 'ETH gaining on BTC (alt rotation)', 'BTC leading ETH']];
 function scaleB(B, f) { const o = {}; for (const k of 'tohlcv') o[k] = 'ohlc'.includes(k) ? B[k].map((x) => x * f) : B[k].slice(); return o; }
 // Timeframes (owner's request, 15 Nov 2026): 4H as loaded and 1D made from the 4H candles (complete days only). Same MSS
 // rules on each; a shift stands 30 candles of its own timeframe (5 days, 30 days) unless price closes back through the
@@ -177,7 +175,7 @@ function toDays(B4, fetched) {
   const D = ZE.resample(B4, ZE.day); if (!D.t.length) return D;
   const lastClose = B4.t[B4.t.length - 1] + H4, lastDay = D.t[D.t.length - 1];
   // a day counts once its last 4H candle has closed, or once the data was fetched after the day ended
-  // (gold and silver stop trading before midnight UTC, so their last candle closes early)
+  // (for a market that stops trading before midnight UTC, whose last candle closes early)
   if (lastClose < lastDay + DAY && !(fetched >= lastDay + DAY)) for (const k of 'tohlcv') D[k] = D[k].slice(0, -1);
   return D;
 }

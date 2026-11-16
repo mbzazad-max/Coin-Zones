@@ -1,5 +1,5 @@
 {
- "_about": "Coins on the board, in board order. To add a coin: add one line here and its two series to market-data/series.json.",
+ "_about": "Coins on the board, in board order. To add a coin: add one line here and its two series to market-data/series.json. removed = rows taken off the board for good (Gold and Silver, owner, 17 Nov 2026): the build drops them instead of keeping their last good version.",
  "bars": {
   "coin_4h": 1000,
   "coin_1d": 1200,
@@ -253,9 +253,8 @@
    "TOT": "tv/CRYPTOCAP_TOTAL/4H",
    "USDT": "tv/CRYPTOCAP_USDT.D/4H",
    "USDC": "tv/CRYPTOCAP_USDC.D/4H",
-   "ETHBTC": "binance/ETHBTC/4H",
-   "GOLD": "tv/TVC_GOLD/4H",
-   "SILV": "tv/TVC_SILVER/4H"
+   "ETHBTC": "binance/ETHBTC/4H"
   }
- }
+ },
+ "removed": ["GOLD", "SILVER"]
 }
