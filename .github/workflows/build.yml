@@ -47,12 +47,15 @@ jobs:
         run: node build/build.js md ${{ inputs.force && '--force' || '' }}
       - name: Structure layer, 4H market structure shift for every coin and its test (skipped with a warning if it fails)
         run: node build/structure.js md > /dev/null
+      - name: Strategy test section, a separate paper test on BTC, ETH, BNB and SOL (skipped with a warning if it fails)
+        run: node build/stratlab.js md
       - name: Save the new board (one commit)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/data.json public/pnl.json public/freshness.json state
           [ -f public/structure.json ] && git add public/structure.json history
+          [ -f public/stratlab.json ] && git add public/stratlab.json
           if git diff --cached --quiet; then echo "Nothing changed."; exit 0; fi
           git commit -q -m "Board build $(node -p "require('./public/freshness.json').generated")"
           for i in 1 2 3 4 5; do git push -q origin HEAD:main && exit 0; git pull -q --rebase origin main; sleep $((i*2)); done
