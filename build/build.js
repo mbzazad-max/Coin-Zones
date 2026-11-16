@@ -89,11 +89,17 @@ out.coins = prev.coins.map(c => built[c.sym] || c);
 const gaugeSyms = new Set(prev.coins.filter(c => c.kind === 'gauge').map(c => c.sym));
 prev.coins.filter(c => c.kind === 'gauge' && !built[c.sym]).forEach(c => kept.push({ sym: c.sym, why: 'gauge input missing or too short' }));
 G.filter(g => !gaugeSyms.has(g.sym)).forEach(g => out.coins.unshift(g));
+// coins added to config/board.json since the last good board: appended in config order once they have data
+const onBoard = new Set(out.coins.map(c => c.sym)), waiting = new Set();
+for (const c of cfg.coins) {
+  if (onBoard.has(c.sym)) continue;
+  if (built[c.sym]) out.coins.push(built[c.sym]); else waiting.add(c.sym);   // no data yet: not on the board until it arrives
+}
 out.meta.generated = stampOf(NOW);
 
 // ---- validate before writing anything ----
 const problems = [];
-for (const c of cfg.coins) if (!out.coins.find(x => x.sym === c.sym)) problems.push(`${c.sym} missing from board`);
+for (const c of cfg.coins) if (!waiting.has(c.sym) && !out.coins.find(x => x.sym === c.sym)) problems.push(`${c.sym} missing from board`);
 for (const c of out.coins) if (!(c.price > 0) || !Array.isArray(c.zones)) problems.push(`${c.sym}: invalid price or zones`);
 if (problems.length) { console.error('Validation failed, nothing written:\n' + problems.join('\n')); process.exit(1); }
 

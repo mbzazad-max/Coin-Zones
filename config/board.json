@@ -201,6 +201,48 @@
    "fut_symbol": null,
    "series_4h": "binance/GRAMUSDT/4H",
    "series_1d": "binance/GRAMUSDT/1D"
+  },
+  {
+   "sym": "ARB",
+   "spot_symbol": "BINANCE:ARBUSDT",
+   "fut_symbol": "BINANCE:ARBUSDT.P",
+   "series_4h": "binance/ARBUSDT/4H",
+   "series_1d": "binance/ARBUSDT/1D"
+  },
+  {
+   "sym": "AVAX",
+   "spot_symbol": "BINANCE:AVAXUSDT",
+   "fut_symbol": "BINANCE:AVAXUSDT.P",
+   "series_4h": "binance/AVAXUSDT/4H",
+   "series_1d": "binance/AVAXUSDT/1D"
+  },
+  {
+   "sym": "FET",
+   "spot_symbol": "BINANCE:FETUSDT",
+   "fut_symbol": "BINANCE:FETUSDT.P",
+   "series_4h": "binance/FETUSDT/4H",
+   "series_1d": "binance/FETUSDT/1D"
+  },
+  {
+   "sym": "RAY",
+   "spot_symbol": "BINANCE:RAYUSDT",
+   "fut_symbol": "OKX:RAYUSDT.P",
+   "series_4h": "binance/RAYUSDT/4H",
+   "series_1d": "binance/RAYUSDT/1D"
+  },
+  {
+   "sym": "RENDER",
+   "spot_symbol": "BINANCE:RENDERUSDT",
+   "fut_symbol": "BINANCE:RENDERUSDT.P",
+   "series_4h": "binance/RENDERUSDT/4H",
+   "series_1d": "binance/RENDERUSDT/1D"
+  },
+  {
+   "sym": "WIF",
+   "spot_symbol": "BINANCE:WIFUSDT",
+   "fut_symbol": "BINANCE:WIFUSDT.P",
+   "series_4h": "binance/WIFUSDT/4H",
+   "series_1d": "binance/WIFUSDT/1D"
   }
  ],
  "gauges": {

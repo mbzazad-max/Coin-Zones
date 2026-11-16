@@ -14,4 +14,4 @@ The Coin Zones board, rebuilt on GitHub and shown on Cloudflare. Claude only loa
 Parity test (original page code vs build.js on identical candles):
 `node tests/parity.js <market-data dir> <path to jsdom>`
 
-To add a coin: add a line to `config/board.json` and its two series to `market-data/series.json`.
+To add a coin: add a line to `config/board.json` and its two series to `market-data/series.json`. A new coin joins the board (at the end, in config order) on the first build that has both its 4H and 1D candles; until then it is listed as waiting in `public/freshness.json` and the build still succeeds.
