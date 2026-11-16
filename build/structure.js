@@ -5,7 +5,7 @@
              and a plain verdict against the board's own buy zone (spot_setup.basis) and 1D sell zone.
      live    the Top 20 P&L paper test replayed with the MSS entry (same advice snapshots, window, size and fee),
              next to the original test's numbers.
-     history both ways of buying replayed since 1 Jan 2025 for the 20 cohort coins. The advice for each day is what
+     history both ways of buying replayed since 1 Jan 2025 for the cohort coins (26 since 16 Nov 2026). The advice for each day is what
              the ORIGINAL engine (public/engine.js, unchanged) gives on the candles closed by the end of that UTC day
              (last 1000 4H, last 1200 1D, as the board build uses). "Zone only" is the original pnl.js simulator on
              those daily snapshots; "zone + MSS" is STRUCT.simMss. Day advice never changes, so it is kept by month in
