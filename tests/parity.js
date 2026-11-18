@@ -20,7 +20,8 @@ cfg.coins.forEach(c => { SYM[c.spot_symbol + '|4h'] = c.series_4h; SYM[c.spot_sy
 const GS = { T2: 'CRYPTOCAP:TOTAL2ES', TOT: 'CRYPTOCAP:TOTAL', T3: 'CRYPTOCAP:TOTAL3ES', USDT: 'CRYPTOCAP:USDT.D', USDC: 'CRYPTOCAP:USDC.D', ETHBTC: 'BINANCE:ETHBTC' };
 for (const [k, s] of Object.entries(GS)) SYM[s + '|4h'] = cfg.gauges.series[k];
 
-const store = { 'pnl/cfg': JSON.parse(fs.readFileSync(path.join(ROOT, 'state/pnl/cfg.json'), 'utf8')) };
+// The P&L paper test was retired on 18 Nov 2026 (paper trading is on Paper-Trade): only the board is compared now.
+const store = {};
 const mkSnap = col => ({ docs: Object.keys(store).filter(k => k.startsWith(col + '/')).map(k => ({ id: k.slice(col.length + 1), data: () => JSON.parse(JSON.stringify(store[k])) })) });
 const DB = { collection: c => ({ get: async () => mkSnap(c) }), doc: p => ({ set: async o => { store[p] = JSON.parse(JSON.stringify(o)); }, get: async () => ({ exists: p in store, data: () => store[p] }) }) };
 const MCP = { callTool: async (server, tool, a) => {
@@ -47,10 +48,8 @@ const MCP = { callTool: async (server, tool, a) => {
   // run build.js on the same candles at the same moment
   const tmp = fs.mkdtempSync('/tmp/cz-parity-'); execFileSync('cp', ['-r', ROOT + '/.', tmp]);
   fs.copyFileSync(path.join(REF, 'data.original.json'), path.join(tmp, 'public/data.json')); try { fs.unlinkSync(path.join(tmp, 'public/freshness.json')); } catch (e) {}
-  for (const f of fs.readdirSync(path.join(tmp, 'state/pnl'))) if (f !== 'cfg.json') fs.unlinkSync(path.join(tmp, 'state/pnl', f));
   execFileSync('node', [path.join(tmp, 'build/build.js'), MD, '--force'], { env: { ...process.env, BUILD_NOW: String(Math.floor(ts / 1000)) } });
   const ours = JSON.parse(fs.readFileSync(path.join(tmp, 'public/data.json'), 'utf8'));
-  const ourPnl = JSON.parse(fs.readFileSync(path.join(tmp, 'public/pnl.json'), 'utf8'));
   const strip = o => { const c = JSON.parse(JSON.stringify(o)); for (const k of Object.keys(c)) if (k[0] === '_' || k === 'hold') delete c[k];
     (c.zones || []).forEach(z => delete z.strongest); return c; };
   const diffs = (a, b, p = '') => { if (JSON.stringify(a) === JSON.stringify(b)) return []; if (typeof a !== 'object' || typeof b !== 'object' || !a || !b) return [p || '(root)'];
@@ -70,12 +69,7 @@ const MCP = { callTool: async (server, tool, a) => {
     const bd = tail(load(c.series_1d), cfg.bars.coin_1d), cut = {}; for (const k in bd) cut[k] = bd[k].slice(0, -1);
     const k = 'board/c_' + sym.replace(/[^A-Za-z0-9]+/g, '_');
     (JSON.stringify(HO.current(cut, pool)) === JSON.stringify(store[k].hold) ? res.hold_explained : res.hold_unexplained).push(sym); }
-  // P&L: bars must match exactly; advice snapshots must match apart from the time stamp
-  const pd = []; for (const sym of store['pnl/cfg'].cohort) {
-    const pb = store['pnl/b_' + sym], ob = ourPnl['b_' + sym], ps = store['pnl/s_' + sym], os = ourPnl['s_' + sym];
-    if (JSON.stringify(pb) !== JSON.stringify(ob)) pd.push(sym + ' bars');
-    const st = s => s && s.snaps.map(x => { const y = { ...x }; delete y.t; return y; });
-    if (JSON.stringify(st(ps)) !== JSON.stringify(st(os))) pd.push(sym + ' advice'); }
+  const pd = [];
   res.pnl_differences = pd;
   console.log(JSON.stringify({ page_message: w.document.getElementById('live').textContent, compared: res.identical.length + Object.keys(res.different).length, ...res }, null, 1));
   w.close(); process.exit(Object.keys(res.different).length || res.missing.length || pd.length || res.hold_unexplained.length ? 1 : 0);
