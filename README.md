@@ -16,3 +16,7 @@ Parity test (original page code vs build.js on identical candles):
 `node tests/parity.js <market-data dir> <path to jsdom>`
 
 To add a coin: add a line to `config/board.json` and its two series to `market-data/series.json`. A new coin joins the board (at the end, in config order) on the first build that has both its 4H and 1D candles; until then it is listed as waiting in `public/freshness.json` and the build still succeeds.
+
+## Paper tests retired (18 Nov 2026)
+
+The Top 20 P&L paper test, its with-MSS comparison and since-2025 replay, and the s083 Strategy test page were removed at the owner's request: paper trading is now on the Paper-Trade dashboard (`/paper-trade/`). `public/retired.js` hides the Top 20 P&L buttons and sends `#pnl` and `#lab` to the board, without changing the original page. `build.js` no longer records advice (no `state/pnl/cfg.json`); `structure.js` still makes the 4H structure signals for the board. Everything recorded so far is in `archive/paper-tests-2026-11-18/`. Tests: `tests/parity.js` (board), `tests/retired.js` (page).

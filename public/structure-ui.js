@@ -2,7 +2,7 @@
    and adds, without touching the original page code:
      All coins     one card: which coins have a 4H structure shift up from their buy zone now, and which say trim
      Spot setup    one card per coin: the standing 4H shift, its entry and stop, or "wait"
-     Top 20 P&L    one card: the paper test with the structure-shift entry next to the original, and both replayed since 2025
+     (The Top 20 P&L card and the per-coin backtest note were retired on 18 Nov 2026: paper trading is on Paper-Trade.)
    If structure.json is missing, nothing is added. Uses the page's own styles. */
 (function () {
   'use strict';
@@ -34,7 +34,7 @@
         + '</tbody></table></div>';
     }
     if (c.bear) h += '<p class="note" style="margin:6px 0">Shift down: ' + shiftLine(c.bear, false) + (c.trim ? '. It came from the 1D sell zone: if you hold this coin, consider trimming.' : '.') + '</p>';
-    var p = D.history && D.history.per && D.history.per[sym];
+    var p = null;   // backtest note retired 18 Nov 2026 (paper trading moved to Paper-Trade)
     if (p && (p.zone.closed || p.mss.closed)) h += '<p class="note" style="margin:6px 0">' + esc(sym) + ' since ' + esc(D.history.from) + ': zone only ' + p.zone.closed + ' trades, ' + pc(p.zone.avg_ret, 2) + ' each on average &middot; with a structure shift ' + p.mss.closed + ' trades, ' + pc(p.mss.avg_ret, 2) + ' each.</p>';
     return h + '<p class="note" style="margin:6px 0 0">' + RULE + '</p></div>';
   }
@@ -85,7 +85,7 @@
     return '<div class="card" id="structCard"><h2>4H structure shift</h2><p style="margin:6px 0">'
       + (buy.length ? 'Shifted up from the buy zone: ' + buy.map(link).join(', ') + '. ' : '<b>No coin has a structure shift up from its buy zone right now.</b> ')
       + (n - buy.length) + ' of ' + n + ' coins: wait.' + (trim.length ? ' Trim signal (shift down from the sell zone): ' + trim.map(link).join(', ') + '.' : '') + '</p>'
-      + '<p class="note" style="margin:6px 0 0">A buy zone alone is not an entry: wait for 4H structure to turn up inside it. Details on each coin\'s Spot setup tab; the test of this rule is on Top 20 P&amp;L.</p>' + gaugeTable() + (D.gauges && D.gauges.tfs ? '<p class="note" style="margin:6px 0 0">' + GRULE + '</p>' : '') + '</div>';
+      + '<p class="note" style="margin:6px 0 0">A buy zone alone is not an entry: wait for 4H structure to turn up inside it. Details on each coin\'s Spot setup tab; this rule is paper traded on the <a href="/paper-trade/#mss">Paper-Trade</a> dashboard.</p>' + gaugeTable() + (D.gauges && D.gauges.tfs ? '<p class="note" style="margin:6px 0 0">' + GRULE + '</p>' : '') + '</div>';
   }
   function row(lab, s) {
     return '<tr><td>' + lab + '</td><td class="num r">' + s.closed + '</td><td class="num r">' + (s.win_rate == null ? '-' : s.win_rate.toFixed(0) + '%') + '</td><td class="num r">' + pc(s.avg_ret, 2) + '</td><td class="num r">' + (s.pf == null ? '-' : s.pf.toFixed(2)) + '</td><td class="num r">' + usd(s.net) + '</td></tr>';
