@@ -83,6 +83,17 @@ for (const [k, id] of Object.entries(cfg.gauges.series)) { const B = load(id); i
 globalThis.HO = HO; globalThis.ZE = ZE; globalThis.HOLD_POOL_G = prev.hold && prev.hold.poolG;
 let G = [];
 try { G = SR.buildGauges(R); } catch (e) { kept.push({ sym: 'gauges', why: 'engine error: ' + (e && e.message || e) }); }
+// extra gauge rows (config gauges.extra) that series.js does not define, e.g. USDT.D alone (20 Nov 2026): built with the
+// engine's own ZE.buildGauge and hold odds exactly as series.js buildGauges does for its rows, on the same 4H bars.
+for (const x of cfg.gauges.extra || []) {
+  const B4 = R[x.key];
+  if (!B4 || !B4.c || B4.c.length < 60) continue;
+  try {
+    const g = ZE.buildGauge(x.sym, x.tv, x.desc, B4);
+    try { const Bd = ZE.resample(B4, ZE.day), d = {}; for (const k of 'tohlcv') d[k] = Bd[k].slice(0, -1); g.hold = HO.current(d, globalThis.HOLD_POOL_G || null); } catch (e) { /* as buildGauges */ }
+    G.push(g);
+  } catch (e) { kept.push({ sym: x.sym, why: 'engine error: ' + (e && e.message || e) }); }
+}
 G = G.filter(g => !removed.has(g.sym));
 G.forEach(g => { built[g.sym] = g; });
 
@@ -91,7 +102,11 @@ const out = JSON.parse(JSON.stringify(prev));
 out.coins = prev.coins.map(c => built[c.sym] || c);
 const gaugeSyms = new Set(prev.coins.filter(c => c.kind === 'gauge').map(c => c.sym));
 prev.coins.filter(c => c.kind === 'gauge' && !built[c.sym]).forEach(c => kept.push({ sym: c.sym, why: 'gauge input missing or too short' }));
-G.filter(g => !gaugeSyms.has(g.sym)).forEach(g => out.coins.unshift(g));
+const afterOf = Object.fromEntries((cfg.gauges.extra || []).map(x => [x.sym, x.after]));
+G.filter(g => !gaugeSyms.has(g.sym)).forEach(g => {
+  const i = afterOf[g.sym] ? out.coins.findIndex(c => c.sym === afterOf[g.sym]) : -1;
+  if (i >= 0) out.coins.splice(i + 1, 0, g); else out.coins.unshift(g);
+});
 // coins added to config/board.json since the last good board: appended in config order once they have data
 const onBoard = new Set(out.coins.map(c => c.sym)), waiting = new Set();
 for (const c of cfg.coins) {

@@ -254,7 +254,20 @@
    "USDT": "tv/CRYPTOCAP_USDT.D/4H",
    "USDC": "tv/CRYPTOCAP_USDC.D/4H",
    "ETHBTC": "binance/ETHBTC/4H"
-  }
+  },
+  "extra": [
+   {
+    "sym": "USDT.D",
+    "tv": "CRYPTOCAP:USDT.D",
+    "key": "USDT",
+    "after": "USDT.D+USDC.D",
+    "desc": "Tether dominance, USDT.D alone, % (added 20 Nov 2026)"
+   }
+  ],
+  "_about_extra": "extra = gauge rows series.js does not define. build.js builds them with the engine's own ZE.buildGauge on the 4H series under gauges.series[key] (same bars, same hold odds as the other gauges) and places each right after 'after'. The engine files stay unchanged."
  },
- "removed": ["GOLD", "SILVER"]
+ "removed": [
+  "GOLD",
+  "SILVER"
+ ]
 }
