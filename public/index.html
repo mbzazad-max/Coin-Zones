@@ -332,7 +332,7 @@ function setupState(c){return c.spot_setup.state}
 function tabSpot(c){
   var hh=heat(c), hnote=hh&&hh.lvl==='Expensive'?'<div class="banner" style="background:var(--res-bg);color:var(--res)"><b>Expensive:</b> '+esc(hh.why.join('; '))+'. If you hold this coin, consider trimming into the sell zones below.</div>':(hh&&hh.lvl==='Warm'?'<div class="banner"><b>Warm:</b> '+esc(hh.why.join('; '))+'. Set your sell zones.</div>':'');
   var ri=rangeInfo(c); if(ri)hnote+='<div class="banner"><b>Range position (info only):</b> '+esc(ri)+'</div>';
-  var ss=c.spot_setup, z=ss.zones, h=hnote+'<div class="card"><h2>Buy and sell zones by timeframe</h2><div class="scroll"><table><thead><tr><th>Timeframe</th><th>Entry buy zone</th><th>Sell zone</th></tr></thead><tbody>';
+  var ss=c.spot_setup, vr=(c.void_rule&&ss.void!=null&&Math.abs(c.void_rule.floor-ss.void)<=Math.abs(ss.void)*1e-9)?c.void_rule:null, z=ss.zones, h=hnote+'<div class="card"><h2>Buy and sell zones by timeframe</h2><div class="scroll"><table><thead><tr><th>Timeframe</th><th>Entry buy zone</th><th>Sell zone</th></tr></thead><tbody>';
   ['4H','1D','1W'].forEach(function(t){
     var b=z[t].buy, s=z[t].sell;
     function cell(x,role){ if(!x)return '<span class="note">none qualified</span>';
@@ -340,7 +340,7 @@ function tabSpot(c){
     h+='<tr><td><b>'+t+'</b></td><td>'+cell(b,'B')+'</td><td>'+cell(s,'S')+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
-  h+='<div class="card"><h2>Spot setup <span class="pill '+(ss.state.indexOf('NO ')===0||ss.state.indexOf('WEAK')===0?'warn':'acc')+'">'+esc(ss.state.toLowerCase())+'</span>'+((ss.entry!=null&&(ss.rr1==null||ss.rr1<1.5))?' <span class="pill warn">no trade, R:R under 1.5:1</span>':'')+'</h2>';
+  h+='<div class="card"><h2>Spot setup <span class="pill '+(ss.state.indexOf('NO ')===0||ss.state.indexOf('WEAK')===0?'warn':'acc')+'">'+esc(ss.state.toLowerCase())+'</span>'+((ss.entry!=null&&(ss.rr1==null||ss.rr1<1.5))?' <span class="pill warn">no trade, R:R under 1.5:1</span>':'')+(vr&&vr.warn?' <span class="pill warn">4H close below floor</span>':'')+'</h2>';
   if(ss.entry==null){ h+='<p>No buy zone with enough agreement exists below price. Price sits near the bottom of the structure on every timeframe checked, so there is no level to anchor an entry or a stop. Wait for a new base to form.</p></div>'; return h; }
   var b=ss.basis, near=c.price>b.hi;
   h+='<div class="kv"><div><b>Buy zone (basis)</b><span>'+fmt(b.lo)+' - '+fmt(b.hi)+'</span></div><div><b>Entry (zone midpoint)</b><span>'+fmt(ss.entry)+'</span></div>'
@@ -351,7 +351,10 @@ function tabSpot(c){
    +(near?'Price is above the zone. Place the buy zone as a limit area and act only when price trades into '+fmt(b.lo)+' - '+fmt(b.hi)+' and a 4H candle closes back above '+fmt(b.hi)+'. ':'Price is inside or at the zone. Enter on a 4H close back above '+fmt(b.hi)+' after a wick into '+fmt(b.lo)+' - '+fmt(b.hi)+'. ')
    +'Add confirmation from the 1D RSI turning up ('+c.ind['1D'].rsi.toFixed(0)+' now).</p>';
   h+='<h3>Stop</h3><p style="margin:0 0 8px">Stop = zone floor minus 1.0 x daily ATR(14) ('+fmt(c.atr_d)+'), which is '+fmt(ss.stop)+'.</p>';
-  h+='<h3>Single level that voids the setup</h3><p style="margin:0">'+esc(ss.void_txt)+'. A close below it means the zone no longer holds.</p>';
+  if(vr){h+='<h3>What voids the setup</h3><p style="margin:0">'+esc(vr.text)+'</p>';
+   if(vr.note)h+='<p class="note '+(vr.status==='void'?'bad':'')+'" style="margin-top:8px">'+(vr.status==='watch'?'<span class="pill warn">watch</span> ':vr.status==='void'?'<span class="pill warn">void</span> ':'')+esc(vr.note)+'</p>';
+   if(vr.warn)h+='<p class="note" style="margin-top:8px"><span class="pill warn">4H close below floor</span> '+esc(vr.warn)+'</p>';}
+  else h+='<h3>Single level that voids the setup</h3><p style="margin:0">'+esc(ss.void_txt)+'. A close below it means the zone no longer holds.</p>';
   if(ss.rr1==null)h+='<p class="note bad" style="margin-top:8px"><b>No trade.</b> There is no target above this entry, so reward-to-risk cannot be measured. Treat it as a watch level.</p>';
   else if(ss.rr1<1.5){var need=(ss.t1+1.5*ss.stop)/2.5;h+='<p class="note bad" style="margin-top:8px"><b>No trade at this entry.</b> Reward to Target 1 is '+rr(ss.rr1)+', below the 1.5:1 minimum. '+(need>ss.stop&&need<ss.entry?'An entry at or below <b class="num">'+fmt(need)+'</b> would reach 1.5:1'+(need<b.lo?', which is under the zone, so skip it unless price sweeps lower first.':'.'):'No entry inside the zone reaches 1.5:1 with this stop and target.')+'</p>'}
   h+='</div>';
