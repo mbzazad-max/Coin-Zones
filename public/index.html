@@ -164,7 +164,9 @@ function heat(c){
   var n=why.length, lvl=n>=3?'Expensive':n===2?'Warm':(pos<=20&&d!=null&&d<40)?'Cheap':'Fair';
   return {lvl:lvl,n:n,why:why,pos:pos,cls:lvl==='Expensive'?'res':lvl==='Warm'?'warn':lvl==='Cheap'?'sup':''};
 }
-function heatPill(c){var h=heat(c);return h?'<span class="pill '+h.cls+'" title="'+esc(h.why.join('; ')||'no heat signals')+'">'+h.lvl+'</span>':'<span class="note">gauge</span>'}
+/* Range position (premium/discount, info only, 25 Nov 2026): built by build/value.js; shown in the Value hover and the coin page, never changes the Value label. */
+function rangeInfo(c){return c.kind!=='gauge'&&c.value&&c.value.info?c.value.info:''}
+function heatPill(c){var h=heat(c),ri=rangeInfo(c);return h?'<span class="pill '+h.cls+'" title="'+esc((h.why.join('; ')||'no heat signals')+(ri?' | Range (info only): '+ri:''))+'">'+h.lvl+'</span>':'<span class="note">gauge</span>'}
 
 /* ---------- navigation ---------- */
 function route(){
@@ -243,7 +245,7 @@ function renderOverview(){
      +'</tr>';
   });
   if(!list.length)h+='<tr><td colspan="9" class="note">No coins match this filter.</td></tr>';
-  h+='</tbody></table></div><p class="note" style="margin:10px 0 0">Zone counts in brackets are the number of independent methods agreeing. The % is the distance from price to the near edge of the zone. Value: Expensive = 3+ heat signals (top 20% of 365-day range, weekly or daily RSI at 70+, 30%+ above daily 200 EMA, sitting at resistance), Warm = 2, Cheap = bottom 20% of range with daily RSI under 40. Hover for the reasons. '+(FILTER==='cheap'?'Cheap (investor) = at a support zone, daily RSI 35 or below, and 40% or more below the 1-year high. Use it with the market score in table 7 of the Alt Timing Check.':'A <span class="tag flag">cheap</span> tag marks coins that pass the investor cheap-entry test.')+'</p></div>';
+  h+='</tbody></table></div><p class="note" style="margin:10px 0 0">Zone counts in brackets are the number of independent methods agreeing. The % is the distance from price to the near edge of the zone. Value: Expensive = 3+ heat signals (top 20% of 365-day range, weekly or daily RSI at 70+, 30%+ above daily 200 EMA, sitting at resistance), Warm = 2, Cheap = bottom 20% of range with daily RSI under 40. Hover for the reasons and the daily range position (premium/discount from the last unbroken swing high and low, information only: it does not change the label). '+(FILTER==='cheap'?'Cheap (investor) = at a support zone, daily RSI 35 or below, and 40% or more below the 1-year high. Use it with the market score in table 7 of the Alt Timing Check.':'A <span class="tag flag">cheap</span> tag marks coins that pass the investor cheap-entry test.')+'</p></div>';
   $('main').innerHTML=h;
 }
 
@@ -329,6 +331,7 @@ function tabZones(c){
 function setupState(c){return c.spot_setup.state}
 function tabSpot(c){
   var hh=heat(c), hnote=hh&&hh.lvl==='Expensive'?'<div class="banner" style="background:var(--res-bg);color:var(--res)"><b>Expensive:</b> '+esc(hh.why.join('; '))+'. If you hold this coin, consider trimming into the sell zones below.</div>':(hh&&hh.lvl==='Warm'?'<div class="banner"><b>Warm:</b> '+esc(hh.why.join('; '))+'. Set your sell zones.</div>':'');
+  var ri=rangeInfo(c); if(ri)hnote+='<div class="banner"><b>Range position (info only):</b> '+esc(ri)+'</div>';
   var ss=c.spot_setup, z=ss.zones, h=hnote+'<div class="card"><h2>Buy and sell zones by timeframe</h2><div class="scroll"><table><thead><tr><th>Timeframe</th><th>Entry buy zone</th><th>Sell zone</th></tr></thead><tbody>';
   ['4H','1D','1W'].forEach(function(t){
     var b=z[t].buy, s=z[t].sell;

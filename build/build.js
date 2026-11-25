@@ -20,6 +20,7 @@ const ZE = require(path.join(PUB, 'engine.js'));
 const HO = require(path.join(PUB, 'holdodds.js'));
 const SR = require(path.join(PUB, 'series.js'));
 const PNL = require(path.join(PUB, 'pnl.js'));
+const VAL = require(path.join(ROOT, 'build', 'value.js'))(ZE);   // Value label (premium/discount), 25 Nov 2026
 
 const rd = f => JSON.parse(fs.readFileSync(f, 'utf8'));
 const wr = (f, o) => { fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, JSON.stringify(o)); };
@@ -45,7 +46,8 @@ const stampOf = s => new Date(s * 1000).toISOString().slice(0, 16).replace('T', 
 const used = new Set();
 cfg.coins.forEach(c => { used.add(c.series_4h); used.add(c.series_1d); });
 Object.values(cfg.gauges.series).forEach(id => used.add(id));
-const engineSum = ['engine.js', 'series.js', 'holdodds.js', 'pnl.js'].map(f => crypto.createHash('sha256').update(fs.readFileSync(path.join(PUB, f))).digest('hex')).join(',');
+const engineSum = ['engine.js', 'series.js', 'holdodds.js', 'pnl.js'].map(f => crypto.createHash('sha256').update(fs.readFileSync(path.join(PUB, f))).digest('hex')).join(',')
+  + ',' + crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'build', 'value.js'))).digest('hex');
 const inputsHash = crypto.createHash('sha256').update(JSON.stringify([engineSum, cfg, [...used].sort().map(id => [id, manifest[id] && manifest[id].last_open, manifest[id] && manifest[id].rows])])).digest('hex');
 
 function freshnessRows() {
@@ -73,6 +75,7 @@ for (const c of cfg.coins) {
     const b4 = last(B4, cfg.bars.coin_4h), bd = last(Bd, cfg.bars.coin_1d);
     const n = ZE.buildCoin(c.sym, b4, bd, c.spot_symbol, c.fut_symbol);
     try { n.hold = HO.current(bd, prev.hold && prev.hold.pool); } catch (e) { /* same as the original: hold left out if it fails */ }
+    try { n.value = VAL.compute(b4, bd, n.zones); } catch (e) { /* page falls back to the old heat() label */ }
     built[c.sym] = n; bars4[c.sym] = B4;
   } catch (e) { kept.push({ sym: c.sym, why: 'engine error: ' + (e && e.message || e) }); }
 }
